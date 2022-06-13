@@ -40,8 +40,22 @@ func CreateScheduler(name string) *Scheduler {
 	}
 }
 
-func (s *Scheduler) GetNodes() (*v1.NodeList, error) {
-	return s.c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+func (s *Scheduler) GetNodes() []*v1.Node {
+	nl, err := s.c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	var nodeList []*v1.Node = make([]*v1.Node, 0)
+	utils.CheckError(err)
+
+	for _, node := range nl.Items {
+		// taints := node.Spec.Taints
+
+		// if len(taints) > 0 {
+		// 	log.Printf("Ignoring node '%s' because of taints %+v\n", node.Name, taints)
+		// 	continue
+		// }
+		nodeList = append(nodeList, &node)
+	}
+
+	return nodeList
 }
 
 func (s *Scheduler) GetUnscheduledPods(namespace string) []v1.Pod {
@@ -63,16 +77,12 @@ func (s *Scheduler) GetUnscheduledPods(namespace string) []v1.Pod {
 	return podList
 }
 
-func (s *Scheduler) WatchUnscheduledPods(pods chan v1.PodList, namespace string) {
-
-}
-
 func (s *Scheduler) BestNodeForPod(pod *v1.Pod) *v1.Node {
 	var schedPolicy string = string(pod.Annotations["schedulePolicy"])
 	return GetNodeByPolicy(s, &schedPolicy)
 }
 
-func (s *Scheduler) Schedule(pod *v1.Pod, node *v1.Node) {
+func (s *Scheduler) bind(pod *v1.Pod, node *v1.Node) error {
 	binding := v1.Binding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: pod.Name,
@@ -83,8 +93,13 @@ func (s *Scheduler) Schedule(pod *v1.Pod, node *v1.Node) {
 			Name:       node.Name,
 		},
 	}
+	return s.c.CoreV1().Pods(pod.Namespace).Bind(context.TODO(), &binding, metav1.CreateOptions{})
+}
 
-	var err error = s.c.CoreV1().Pods(pod.Namespace).Bind(context.TODO(), &binding, metav1.CreateOptions{})
+func (s *Scheduler) Schedule(pod *v1.Pod) {
+
+	node := s.BestNodeForPod(pod)
+	err := s.bind(pod, node)
 
 	if err != nil {
 		log.Fatalf("Unable to schedule pod '%s' on node '%s'. Reason: %s", pod.Name, node.Name, err.Error())

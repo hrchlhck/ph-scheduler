@@ -1,10 +1,11 @@
 package tests
 
 import (
-	hs "horchulhack-scheduler/profile"
 	"reflect"
 	"testing"
 	"time"
+
+	hs "github.com/hrchlhck/hrchlhck-scheduler/profile"
 
 	"github.com/google/go-cmp/cmp"
 )

@@ -65,17 +65,17 @@ func VarCoef(X *[]int) float64 {
 	return std / mean
 }
 
-func WeightedAverage(values *[]float64, weights *[]float64) (float64, error) {
-	if len(*values) != len(*weights) {
+func WeightedAverage(values []float64, weights *[]float64) (float64, error) {
+	if len(values) != len(*weights) {
 		return math.Inf(0), errors.New("values and weights must have the same size")
 	}
 
 	var total float64 = 0
 	var weightSum float64 = 0
 
-	for i := 0; i < len(*values); i++ {
+	for i := 0; i < len(values); i++ {
 		w := (*weights)[i]
-		total += (*values)[i] * w
+		total += values[i] * w
 		weightSum += w
 	}
 

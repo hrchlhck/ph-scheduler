@@ -1,11 +1,10 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
   name: web-deploy
   labels:
     app: web-deploy
 spec:
-  replicas: 3
   selector:
     matchLabels:
       app: web-deploy
@@ -15,8 +14,12 @@ spec:
         app: web-deploy
       annotations:
         schedulePolicy: bestfit
+        cpuMaxLoad: 8
+        maxMemoryLoad: 0.75
+        maxNetLoad: 0.75
+        maxDiskLoad: 0.75
     spec:
+      schedulerName: horchulhack
       containers:
         - image: nginx
           name: web
-      schedulerName: horchulhack

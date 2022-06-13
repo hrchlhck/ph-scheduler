@@ -68,13 +68,12 @@ func (np *NodeProfile) _score(weights *[]float64, deviceNames *[]string) float64
 		totalScoreDevice = append(totalScoreDevice, np.SumDeviceStatistics(k))
 	}
 
-	avg, err := WeightedAverage(&totalScoreDevice, weights)
+	avg, err := WeightedAverage(totalScoreDevice, weights)
 
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	// return MinMax(&avg, &totalScoreDevice)
 	return avg
 }
 
@@ -88,6 +87,7 @@ func (np *NodeProfile) Score(weights []float64, deviceNames []string) float64 {
 	go func() {
 		defer wg.Done()
 		oldScore = np._score(&weights, &deviceNames)
+		log.Println(oldScore)
 	}()
 
 	go func() {
@@ -98,6 +98,7 @@ func (np *NodeProfile) Score(weights []float64, deviceNames []string) float64 {
 	go func() {
 		defer wg.Done()
 		newScore = np._score(&weights, &deviceNames)
+		log.Println(newScore)
 	}()
 
 	wg.Wait()
