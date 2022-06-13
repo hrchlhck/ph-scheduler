@@ -16,9 +16,12 @@ type CPUMetrics struct {
 	Processes        int
 	AliveProcesses   int
 	BlockedProcesses int
+	LoadAvg1         float64
+	LoadAvg5         float64
+	LoadAvg15        float64
 }
 
-func GetCPUStats() interface{} {
+func GetCPUStats() *CPUMetrics {
 	var cpu CPUMetrics = CPUMetrics{}
 
 	for _, fields := range utils.GetFields("/proc/stat", false) {
@@ -50,5 +53,10 @@ func GetCPUStats() interface{} {
 		}
 	}
 
-	return cpu
+	loadavg := utils.GetFields("/proc/loadavg", true)
+	cpu.LoadAvg1 = utils.ToFloat(loadavg[0][0], 64)
+	cpu.LoadAvg5 = utils.ToFloat(loadavg[0][1], 64)
+	cpu.LoadAvg15 = utils.ToFloat(loadavg[0][2], 64)
+
+	return &cpu
 }

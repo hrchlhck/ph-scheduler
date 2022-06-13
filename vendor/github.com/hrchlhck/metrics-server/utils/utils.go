@@ -21,6 +21,12 @@ func ToInt(s string) int {
 	return n
 }
 
+func ToFloat(s string, bitSize int) float64 {
+	n, e := strconv.ParseFloat(s, bitSize)
+	CheckError(e)
+	return n
+}
+
 func GetFields(file string, singleLine bool) [][]string {
 	data, err := os.ReadFile(file)
 

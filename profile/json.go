@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	m "github.com/hrchlhck/metrics-server/metrics"
-	utils "github.com/hrchlhck/metrics-server/utils"
+	"github.com/hrchlhck/metrics-server/utils"
 )
 
 type Metrics struct {

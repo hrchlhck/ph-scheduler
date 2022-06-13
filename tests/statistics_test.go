@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	hs "github.com/hrchlhck/hrchlhck-scheduler/profile"
+	hs "github.com/hrchlhck/ph-scheduler/profile"
 )
 
 func TestWeightedAverageError(t *testing.T) {

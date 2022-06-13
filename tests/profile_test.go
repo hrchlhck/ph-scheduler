@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	hs "github.com/hrchlhck/hrchlhck-scheduler/profile"
+	hs "github.com/hrchlhck/ph-scheduler/profile"
 
 	"github.com/google/go-cmp/cmp"
 )

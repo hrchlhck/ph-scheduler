@@ -4,7 +4,9 @@ import (
 	"github.com/hrchlhck/metrics-server/utils"
 )
 
+// Metrics are accounted as kb
 type MemoryMetrics struct {
+	Total             int
 	Free              int
 	Available         int
 	Buffers           int
@@ -15,14 +17,14 @@ type MemoryMetrics struct {
 	ActiveAnonPages   int
 	InactiveAnonPages int
 	Mapped            int
-	// KernelStack       int
 }
 
-func GetMemoryStats() interface{} {
+func GetMemoryStats() *MemoryMetrics {
 	var mem MemoryMetrics = MemoryMetrics{}
 	var data [][]string = utils.GetFields("/proc/meminfo", false)
 
 	if len(data) != 0 {
+		mem.Total = utils.ToInt(data[0][1])
 		mem.Free = utils.ToInt(data[1][1])
 		mem.Available = utils.ToInt(data[2][1])
 		mem.Buffers = utils.ToInt(data[3][1])
@@ -33,7 +35,7 @@ func GetMemoryStats() interface{} {
 		mem.ActiveAnonPages = utils.ToInt(data[8][1])
 		mem.InactiveAnonPages = utils.ToInt(data[9][1])
 		mem.Mapped = utils.ToInt(data[19][1])
-		return mem
+		return &mem
 	}
 	return nil
 }

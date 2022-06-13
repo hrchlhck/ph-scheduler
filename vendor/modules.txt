@@ -5,6 +5,10 @@ github.com/davecgh/go-spew/spew
 ## explicit; go 1.13
 github.com/emicklei/go-restful/v3
 github.com/emicklei/go-restful/v3/log
+# github.com/gin-contrib/sse v0.1.0
+## explicit; go 1.12
+# github.com/gin-gonic/gin v1.8.1
+## explicit
 # github.com/go-logr/logr v1.2.3
 ## explicit; go 1.16
 github.com/go-logr/logr
@@ -18,6 +22,14 @@ github.com/go-openapi/jsonreference/internal
 # github.com/go-openapi/swag v0.21.1
 ## explicit; go 1.11
 github.com/go-openapi/swag
+# github.com/go-playground/locales v0.14.0
+## explicit; go 1.13
+# github.com/go-playground/universal-translator v0.18.0
+## explicit; go 1.13
+# github.com/go-playground/validator/v10 v10.11.0
+## explicit; go 1.13
+# github.com/goccy/go-json v0.9.7
+## explicit
 # github.com/gogo/protobuf v1.3.2
 ## explicit; go 1.15
 github.com/gogo/protobuf/proto
@@ -47,7 +59,7 @@ github.com/google/go-cmp/cmp/internal/value
 ## explicit; go 1.12
 github.com/google/gofuzz
 github.com/google/gofuzz/bytesource
-# github.com/hrchlhck/metrics-server v0.0.0-20220601121342-d63bb1c14ec3
+# github.com/hrchlhck/metrics-server v0.0.0-20220611164444-df05fc63e02f
 ## explicit; go 1.17
 github.com/hrchlhck/metrics-server/metrics
 github.com/hrchlhck/metrics-server/utils
@@ -60,11 +72,15 @@ github.com/josharian/intern
 # github.com/json-iterator/go v1.1.12
 ## explicit; go 1.12
 github.com/json-iterator/go
+# github.com/leodido/go-urn v1.2.1
+## explicit; go 1.13
 # github.com/mailru/easyjson v0.7.7
 ## explicit; go 1.12
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
+# github.com/mattn/go-isatty v0.0.14
+## explicit; go 1.12
 # github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
 ## explicit
 github.com/modern-go/concurrent
@@ -74,9 +90,15 @@ github.com/modern-go/reflect2
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 ## explicit
 github.com/munnerz/goautoneg
+# github.com/pelletier/go-toml/v2 v2.0.2
+## explicit
 # github.com/spf13/pflag v1.0.5
 ## explicit; go 1.12
 github.com/spf13/pflag
+# github.com/ugorji/go/codec v1.2.7
+## explicit; go 1.11
+# golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
+## explicit
 # golang.org/x/net v0.0.0-20220607020251-c690dde0001d
 ## explicit; go 1.17
 golang.org/x/net/context
@@ -89,7 +111,7 @@ golang.org/x/net/idna
 ## explicit; go 1.11
 golang.org/x/oauth2
 golang.org/x/oauth2/internal
-# golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a
+# golang.org/x/sys v0.0.0-20220610221304-9f5ed59c137d
 ## explicit; go 1.17
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/plan9

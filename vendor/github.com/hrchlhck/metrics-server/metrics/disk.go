@@ -22,7 +22,7 @@ type DiskMetrics struct {
 	FlushTicks     int
 }
 
-func GetDiskStats() interface{} {
+func GetDiskStats() *DiskMetrics {
 	var disk DiskMetrics = DiskMetrics{}
 	var data []string = utils.GetFields("/sys/block/sda/stat", true)[0]
 
@@ -44,5 +44,5 @@ func GetDiskStats() interface{} {
 	disk.FlushIO = utils.ToInt(data[15])
 	disk.FlushTicks = utils.ToInt(data[16])
 
-	return disk
+	return &disk
 }
