@@ -12,14 +12,8 @@ spec:
     metadata:
       labels:
         app: web-deploy
-      annotations:
-        schedulePolicy: bestfit
-        ph.cpu: 8
-        ph.memory: 0.75
-        ph.network: 0.75
-        ph.disk: 0.75
     spec:
-      schedulerName: horchulhack
+      schedulerName: teste
       containers:
         - image: nginx
           name: web

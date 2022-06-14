@@ -3,13 +3,14 @@ kind: Service
 metadata:
   name: ms-service
 spec:
-  clusterIP: None
+  type: NodePort
   selector:
     app: metrics-server
   ports:
   - name: rest
     port: 80
     targetPort: 80
+    nodePort: 30001
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -26,13 +27,31 @@ spec:
       labels:
         app: metrics-server
     spec:
+      volumes:
+      - name: sys
+        hostPath:
+          path: /sys
+          type: Directory
+      - name: procfs
+        hostPath:
+          path: /proc
+          type: Directory
       containers:
         - image: vpemfh7/metrics-server
           name: metrics
-          args: ["0.0.0.0", "80"]
+          volumeMounts:
+          - name: procfs
+            mountPath: /procfs
+            readOnly: true
+          - name: sys
+            mountPath: /sys
+            readOnly: true
+          ports:
+            - name: http
+              containerPort: 80
           env:
-          - name: HOSTNAME
-            value: "teste"
+          - name: IFACE
+            value: "eth0"
           ports:
             - name: rest
               containerPort: 80
