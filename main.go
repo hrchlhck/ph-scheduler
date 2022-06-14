@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"github.com/hrchlhck/ph-scheduler/sched"
 	v1 "k8s.io/api/core/v1"
@@ -25,26 +24,6 @@ func checkArgs() string {
 
 func main() {
 	sn := checkArgs()
-	s := sched.CreateScheduler(sn)
+	s := sched.CreateScheduler(sn, "bestfit")
 	s.Start()
-
-	for {
-		for _, node := range s.GetNodes() {
-			var addr string = node.Status.Addresses[0].Address
-			nodeWeight[node.Name] = getNodeWeights(node)
-
-			metrics := p.Get("http://" + addr + "/os/")
-			np := p.CreateNode(node.Name, 5, nodeWeight[node.Name])
-			np.Incorporate(metrics)
-
-			score := np.Score([]float64{1, 1, 1, 1}, []string{"cpu", "memory", "disk", "network"})
-
-			log.Println(score)
-
-			if score < minUsage.Score {
-				minUsage = nodeTuple{node, score}
-			}
-		}
-		time.Sleep(2 * time.Second)
-	}
 }

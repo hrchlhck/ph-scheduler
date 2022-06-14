@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"path/filepath"
+	"time"
 
 	"github.com/hrchlhck/metrics-server/utils"
 	p "github.com/hrchlhck/ph-scheduler/profile"
@@ -17,11 +18,17 @@ import (
 )
 
 type Scheduler struct {
-	c    *kubernetes.Clientset
-	Name string
+	c              *kubernetes.Clientset
+	Name           string
+	SchedulePolicy string
 }
 
-func CreateScheduler(name string) *Scheduler {
+type NodeAnnotation struct {
+	Weight float32
+	Max    float64
+}
+
+func CreateScheduler(name, policy string) *Scheduler {
 	var kubeconfig *string
 	if home := homedir.HomeDir(); home != "" {
 		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
@@ -37,8 +44,9 @@ func CreateScheduler(name string) *Scheduler {
 	utils.CheckError(err)
 
 	return &Scheduler{
-		c:    clientset,
-		Name: name,
+		c:              clientset,
+		Name:           name,
+		SchedulePolicy: policy,
 	}
 }
 
@@ -60,6 +68,15 @@ func (s *Scheduler) GetNodes() []*v1.Node {
 	return nodeList
 }
 
+func (s *Scheduler) GetMapNodes() map[string]*v1.Node {
+	nodes := s.GetNodes()
+	var ret map[string]*v1.Node = make(map[string]*v1.Node)
+	for _, node := range nodes {
+		ret[node.Name] = node
+	}
+	return ret
+}
+
 func (s *Scheduler) GetUnscheduledPods(namespace string) []v1.Pod {
 	opts := metav1.ListOptions{FieldSelector: "status.phase=Pending"}
 	pods, err := s.c.CoreV1().Pods(namespace).List(context.TODO(), opts)
@@ -79,9 +96,24 @@ func (s *Scheduler) GetUnscheduledPods(namespace string) []v1.Pod {
 	return podList
 }
 
-func (s *Scheduler) BestNodeForPod(pod *v1.Pod) *v1.Node {
-	var schedPolicy string = string(pod.Annotations["schedulePolicy"])
-	return GetNodeByPolicy(s, &schedPolicy)
+func (s *Scheduler) scoreNodes(nodeProfiles *map[string]p.NodeProfile, nodes []*v1.Node) map[string]float64 {
+	var ret map[string]float64 = make(map[string]float64)
+
+	for _, node := range nodes {
+		weights := getNodeWeights(node)
+
+		metrics := p.Get("http://" + node.Status.Addresses[0].Address + "/os/")
+		np := (*nodeProfiles)[node.Name]
+		np.Incorporate(metrics)
+
+		score := np.Score(weights)
+
+		log.Println(node.Name, "scored:", score)
+
+		ret[node.Name] = score
+	}
+
+	return ret
 }
 
 func (s *Scheduler) bind(pod *v1.Pod, node *v1.Node) error {
@@ -98,9 +130,7 @@ func (s *Scheduler) bind(pod *v1.Pod, node *v1.Node) error {
 	return s.c.CoreV1().Pods(pod.Namespace).Bind(context.TODO(), &binding, metav1.CreateOptions{})
 }
 
-func (s *Scheduler) Schedule(pod *v1.Pod) {
-
-	node := s.BestNodeForPod(pod)
+func (s *Scheduler) Schedule(pod *v1.Pod, node *v1.Node) {
 	err := s.bind(pod, node)
 
 	if err != nil {
@@ -110,55 +140,76 @@ func (s *Scheduler) Schedule(pod *v1.Pod) {
 	}
 }
 
-func getNodeWeights(n *v1.Node) map[string]string {
+func getNodeWeights(n *v1.Node) map[string]float64 {
 	annotations := n.Annotations
 	delete(annotations, "schedulePolicy")
 
-	return annotations
-}
+	newAnnotations := make(map[string]float64)
 
-func (s *Scheduler) scoreNodes(nodes []*v1.Node) map[string]float64 {
-	var minUsage nodeTuple = nodeTuple{nil, math.Inf(99999)}
-
-	for _, node := range nodes {
-		weights := getNodeWeights(node)
-
-		metrics := p.Get("http://" + node.Status.Addresses[0].Address + "/os/")
-		np := p.CreateNode(node.Name, weights)
-		np.Incorporate(metrics)
-
-		score := np.Score([]float64{1, 1, 1, 1}, []string{"cpu", "memory", "disk", "network"})
-
-		log.Println(node.Name, "scored:", score)
-
-		if score < minUsage.Score {
-			minUsage = nodeTuple{node, score}
-		}
+	for k, v := range annotations {
+		newAnnotations[k] = utils.ToFloat(v, 64)
 	}
+
+	return newAnnotations
 }
 
-func createNodeProfiles(nodes []*v1.Node) []p.NodeProfile {
-	var ret []p.NodeProfile = make([]p.NodeProfile, 0)
+func createNodeProfiles(nodes []*v1.Node) map[string]p.NodeProfile {
+	var ret map[string]p.NodeProfile = make(map[string]p.NodeProfile)
 	for _, node := range nodes {
 		weights := getNodeWeights(node)
-		ret = append(ret, *p.CreateNode(node.Name, weights))
+		ret[node.Name] = *p.CreateNode(node.Name, weights)
 	}
 	return ret
 }
 
-func getNodeSchedulingPolicy(n *v1.Node) string {
-	if sp, ok := n.Annotations["schedulePolicy"]; ok {
-		return sp
+func (s *Scheduler) getBestNode(scores map[string]float64, policy string) *v1.Node {
+	var retNode *v1.Node
+	nodes := s.GetMapNodes()
+
+	switch policy {
+	case "bestfit":
+		var min float64 = math.Inf(99999)
+
+		for node, score := range scores {
+			if score < min {
+				retNode = nodes[node]
+			}
+		}
+	case "worstfit":
+		var max float64 = math.Inf(-99999)
+
+		for node, score := range scores {
+			if score > max {
+				retNode = nodes[node]
+			}
+		}
+	case "firstfit":
+		for node := range scores {
+			return nodes[node]
+		}
 	}
-	return "bestfit"
+	return retNode
 }
 
 func (s *Scheduler) Start() {
 	log.Printf("Starting %s scheduler\n", s.Name)
 
 	nodes := s.GetNodes()
-	nodeProfiles = createNodeProfiles(nodes)
+	nodeProfiles := createNodeProfiles(nodes)
+	i := 0
 	for {
-		scores := s.scoreNodes(nodes)
+		scores := s.scoreNodes(&nodeProfiles, nodes)
+
+		bestNode := s.getBestNode(scores, s.SchedulePolicy)
+
+		pods := s.GetUnscheduledPods("default")
+
+		for _, pod := range pods {
+			s.Schedule(&pod, bestNode)
+		}
+
+		i++
+		log.Println("i:", i)
+		time.Sleep(5 * time.Second)
 	}
 }
