@@ -1,0 +1,3 @@
+[submodule "metrics-server"]
+	path = metrics-server
+	url = git@github.com:hrchlhck/metrics-server.git
