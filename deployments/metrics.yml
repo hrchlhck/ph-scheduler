@@ -38,6 +38,7 @@ spec:
           type: Directory
       containers:
         - image: vpemfh7/metrics-server
+          imagePullPolicy: IfNotPresent
           name: metrics
           volumeMounts:
           - name: procfs
@@ -51,7 +52,7 @@ spec:
               containerPort: 80
           env:
           - name: IFACE
-            value: "eth0"
+            value: "ens33"
           ports:
             - name: rest
               containerPort: 80

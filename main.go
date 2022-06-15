@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/hrchlhck/ph-scheduler/sched"
+	"sync"
 )
 
 func checkArgs() string {
@@ -21,17 +22,21 @@ func main() {
 		"ph.max/memory":     "0.75",
 		"ph.max/network":    "0.75",
 		"ph.max/disk":       "0.75",
-		"ph.weight/cpu":     "2",
-		"ph.weight/memory":  "1",
+		"ph.weight/cpu":     "3",
+		"ph.weight/memory":  "2",
 		"ph.weight/network": "2",
-		"ph.weight/disk":    "3",
+		"ph.weight/disk":    "1",
 	}
+	var wg sync.WaitGroup
+
+	// Wait for the scheduler score all nodes after N seconds
+	wg.Add(1)
 
 	sn := checkArgs()
-	s := sched.CreateScheduler(sn, "bestfit", annotations)
-
-	s.Start()
+	s := sched.CreateScheduler(sn, "bestfit", annotations, wg)
 
 	go sched.MonitorUnscheduledPods(s)
+	
+	s.Start()
 
 }

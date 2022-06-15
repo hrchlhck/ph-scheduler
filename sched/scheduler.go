@@ -24,6 +24,7 @@ type Scheduler struct {
 	Name           string
 	SchedulePolicy string
 	NodeScore      map[string]float64
+	wg sync.WaitGroup
 }
 
 type NodeAnnotation struct {
@@ -33,7 +34,7 @@ type NodeAnnotation struct {
 
 var MUTEX = &sync.Mutex{}
 
-func CreateScheduler(name, policy string, annotations map[string]string) *Scheduler {
+func CreateScheduler(name, policy string, annotations map[string]string, wg sync.WaitGroup) *Scheduler {
 	var kubeconfig *string
 	if home := homedir.HomeDir(); home != "" {
 		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
@@ -55,6 +56,7 @@ func CreateScheduler(name, policy string, annotations map[string]string) *Schedu
 		NodeScore:      make(map[string]float64),
 		Name:           name,
 		SchedulePolicy: policy,
+		wg: wg,
 	}
 }
 
@@ -67,7 +69,7 @@ func (s *Scheduler) GetNodes() []v1.Node {
 		taints := node.Spec.Taints
 
 		if len(taints) > 0 {
-			log.Printf("Ignoring node '%s' because of taints %+v\n", node.Name, taints)
+			// log.Printf("Ignoring node '%s' because of taints %+v\n", node.Name, taints)
 			continue
 		}
 		nodeList = append(nodeList, node)
@@ -96,7 +98,7 @@ func (s *Scheduler) GetUnscheduledPods(namespace string) []v1.Pod {
 	}
 
 	for _, pod := range pods.Items {
-		if pod.Spec.SchedulerName == s.Name {
+		if pod.Spec.SchedulerName == s.Name  && pod.Spec.NodeName == "" {
 			podList = append(podList, pod)
 		}
 	}
@@ -170,33 +172,32 @@ func createNodeProfiles(nodes []v1.Node) map[string]p.NodeProfile {
 	return ret
 }
 
-func (s *Scheduler) getBestNode(scores map[string]float64, policy string) *v1.Node {
-	var retNode *v1.Node
+func (s *Scheduler) getBestNode(scores map[string]float64, policy string) v1.Node {
+	var retNode v1.Node
 	nodes := s.GetMapNodes()
 
 	switch policy {
 	case "bestfit":
-		var min float64 = math.Inf(99999)
+		var min float64 = 99999999999
 
 		for node, score := range scores {
 			if score < min {
-				n := nodes[node]
-				retNode = &n
+				retNode = nodes[node]
+				min = score
 			}
 		}
 	case "worstfit":
-		var max float64 = math.Inf(-99999)
+		var max float64 = -999999999999
 
 		for node, score := range scores {
 			if score > max {
-				n := nodes[node]
-				retNode = &n
+				retNode = nodes[node]
+				max = score
 			}
 		}
 	case "firstfit":
 		for node := range scores {
-			n := nodes[node]
-			return &n
+			return nodes[node]
 		}
 	}
 	return retNode
@@ -210,7 +211,7 @@ func (s *Scheduler) watchUnscheduledPods() <-chan v1.Pod {
 			unscheduled := s.GetUnscheduledPods("default")
 
 			for _, pod := range unscheduled {
-				log.Println(pod.Name)
+				log.Println("Got unscheduled pod", pod.Name)
 				pods <- pod
 			}
 
@@ -222,20 +223,18 @@ func (s *Scheduler) watchUnscheduledPods() <-chan v1.Pod {
 
 func MonitorUnscheduledPods(s *Scheduler) {
 	pods := s.watchUnscheduledPods()
-	log.Println(pods)
+	
+	s.wg.Wait()
+
 	for {
 		bestNode := s.getBestNode(s.NodeScore, s.SchedulePolicy)
-
-		if bestNode == nil {
-			continue
-		}
 
 		var pod v1.Pod = <-pods
 
 		MUTEX.Lock()
-		s.Schedule(&pod, bestNode)
-		log.Printf("Selected node '%s (score=%.3f)' based on policy '%s'\n", bestNode.Name, s.NodeScore[bestNode.Name], s.SchedulePolicy)
+		s.Schedule(&pod, &bestNode)
 		MUTEX.Unlock()
+		log.Printf("Selected node '%s (score=%.3f)' based on policy '%s'\n", bestNode.Name, s.NodeScore[bestNode.Name], s.SchedulePolicy)
 
 		time.Sleep(3 * time.Second)
 	}
@@ -246,18 +245,27 @@ func (s *Scheduler) Start() {
 
 	nodes := s.GetNodes()
 	nodeProfiles := createNodeProfiles(nodes)
+	doneFlag := false
 
 	for {
 		oldScores := s.scoreNodes(&nodeProfiles, &nodes)
 		time.Sleep(5 * time.Second)
 		newScores := s.scoreNodes(&nodeProfiles, &nodes)
+		
+		if len(s.NodeScore) > 0 && !doneFlag {
+			s.wg.Done()
+			doneFlag = true
+		}
+
+		MUTEX.Lock()
 
 		for k := range newScores {
 			newScores[k] = math.Abs(newScores[k] - oldScores[k])
 		}
 
-		MUTEX.Lock()
 		s.NodeScore = newScores
 		MUTEX.Unlock()
+
+		log.Println(s.NodeScore)
 	}
 }
