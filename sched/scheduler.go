@@ -173,20 +173,23 @@ func createNodeProfiles(nodes []v1.Node) map[string]p.NodeProfile {
 }
 
 func (s *Scheduler) getBestNode(scores map[string]float64, policy string) v1.Node {
-	var retNode v1.Node
 	nodes := s.GetMapNodes()
+	
+	log.Println(scores)
 
 	switch policy {
 	case "bestfit":
 		var min float64 = 99999999999
-
+		var retNode v1.Node
 		for node, score := range scores {
 			if score < min {
 				retNode = nodes[node]
 				min = score
 			}
 		}
+		return retNode
 	case "worstfit":
+		var retNode v1.Node
 		var max float64 = -999999999999
 
 		for node, score := range scores {
@@ -195,12 +198,14 @@ func (s *Scheduler) getBestNode(scores map[string]float64, policy string) v1.Nod
 				max = score
 			}
 		}
+		return retNode
 	case "firstfit":
 		for node := range scores {
 			return nodes[node]
 		}
 	}
-	return retNode
+
+	return v1.Node{}
 }
 
 func (s *Scheduler) watchUnscheduledPods() <-chan v1.Pod {
@@ -224,19 +229,18 @@ func (s *Scheduler) watchUnscheduledPods() <-chan v1.Pod {
 func MonitorUnscheduledPods(s *Scheduler) {
 	pods := s.watchUnscheduledPods()
 	
-	s.wg.Wait()
-
 	for {
+		s.wg.Wait()
+			
 		bestNode := s.getBestNode(s.NodeScore, s.SchedulePolicy)
 
 		var pod v1.Pod = <-pods
 
-		MUTEX.Lock()
 		s.Schedule(&pod, &bestNode)
-		MUTEX.Unlock()
-		log.Printf("Selected node '%s (score=%.3f)' based on policy '%s'\n", bestNode.Name, s.NodeScore[bestNode.Name], s.SchedulePolicy)
 
-		time.Sleep(3 * time.Second)
+		log.Printf("Selected node '%s' (score=%.3f) based on policy '%s'\n", bestNode.Name, s.NodeScore[bestNode.Name], s.SchedulePolicy)
+
+		time.Sleep(1 * time.Second)
 	}
 }
 
@@ -258,14 +262,12 @@ func (s *Scheduler) Start() {
 		}
 
 		MUTEX.Lock()
-
 		for k := range newScores {
 			newScores[k] = math.Abs(newScores[k] - oldScores[k])
 		}
-
+		
 		s.NodeScore = newScores
+		
 		MUTEX.Unlock()
-
-		log.Println(s.NodeScore)
 	}
 }

@@ -41,7 +41,7 @@ metadata:
   labels:
     app: web-deploy
 spec:
-  # schedulerName: teste
+  schedulerName: teste
   containers:
     - image: nginx
       imagePullPolicy: IfNotPresent
