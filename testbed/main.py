@@ -2,20 +2,25 @@
 
 import subprocess
 import time
+import traceback
 
-def delete_nginx():
+from operator import add
+from functools import reduce
+from pathlib import Path
+
+def delete_nginx(approach: str):
     out = None
     try:
-        out = subprocess.check_output("kubectl delete -f ../deployments/pod.yml".split(" ")).decode()
+        out = subprocess.check_output(f"kubectl delete -f ../deployments/pod_{approach}.yml".split(" ")).decode()
     except:
         pass
     return out
     
 
-def deploy_nginx():
+def deploy_nginx(approach: str):
     out = None
     try:
-        out = subprocess.check_output("kubectl apply -f ../deployments/pod.yml".split(" ")).decode()
+        out = subprocess.check_output(f"kubectl apply -f ../deployments/pod_{approach}.yml".split(" ")).decode()
     except:
         pass
     return out
@@ -56,15 +61,84 @@ def wait_ip(pod_name: str):
     
     return ip
 
-def test_no_interference(n, approach="tcc", subdir="no-interference"):
+def start_scheduler(scheduler_name: str, policy: str) -> subprocess.Popen:
+    proc = None
+    try:
+        print(f'Initializing scheduler "{scheduler_name}" with policy "{policy}"')
+        proc = subprocess.Popen(f"{Path('.').cwd().parent / 'scheduler'} {scheduler_name} {policy}".split(" "), stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    except:
+        traceback.print_exc()
+    return proc
+
+def test_no_interference(n, approach="tcc", subdir="no-interference", policy="bestfit"):
+    s = start_scheduler(approach, policy)
+
     for i in range(n):
         print('Testing no interference', i)
-        print(delete_nginx())
-        print(deploy_nginx())
+        print(delete_nginx(approach))
+        print(deploy_nginx(approach))
 
         ip = wait_ip('web-deploy')
 
-        save_csv(f'{subdir}/{approach}/iteration-{str(i).zfill(2)}.csv', start_hey(ip))
+        save_csv(f'{subdir}/{policy}/{approach}/iteration-{str(i).zfill(2)}.csv', start_hey(ip))
+
+    s.terminate()
+
+def wait_deletion():
+    done = False
+    i = 0
+    while not done:
+        out = subprocess.check_output("kubectl get pods -o wide --no-headers".split(" ")).decode()
+        out = out.split('\n')
+        out = [i.split()[0] for i in out if len(i) > 0]
+        out = [i for i in out if 'sysbench' in i]
+        out = ', '.join(out)
+    
+        if len(out) == 0:
+            done = True
+
+        time.sleep(1)
+        print(f'[ {i}s ]Waiting for pods to be deleted')
+        i += 1
+
+def create_interference(n_threads=4) -> None:
+    out = None
+    try:
+        out = subprocess.check_output(f"kubectl apply -f ../deployments/sysbench_{n_threads}threads.yml".split(" ")).decode()
+    except:
+        pass
+    return out
+
+def delete_interference(n_threads=4) -> None:
+    out = None
+    try:
+        out = subprocess.check_output(f"kubectl delete -f ../deployments/sysbench_{n_threads}threads.yml".split(" ")).decode()
+        wait_deletion()
+    except:
+        pass
+    return out
+
+def test_interference(n, threads: int, approach="tcc", subdir="4-thread", policy="bestfit"):
+    s = start_scheduler(approach, policy)
+
+    for i in range(n):
+        print('Testing interference', i, subdir)
+        print(delete_interference(threads))
+        print(create_interference(threads))
+        print(delete_nginx(approach))
+        print(deploy_nginx(approach))
+
+        ip = wait_ip('web-deploy')
+
+        save_csv(f'{subdir}/{policy}/{approach}/iteration-{str(i).zfill(2)}.csv', start_hey(ip))
+
+    s.terminate()
 
 n = 30
-test_no_interference(n, approach="k8s", subdir="1-thread")
+subdir = "4-thread"
+approaches = ["tcc", "k8s"]
+policies = ["bestfit", "worstfit", "firstfit"]
+
+for a in approaches:
+    for p in policies:
+        test_interference(n, 4, approach=a, subdir=subdir, policy=p)
