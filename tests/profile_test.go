@@ -11,7 +11,7 @@ import (
 )
 
 func TestWindowIncorporateOne(t *testing.T) {
-	var np *hs.NodeProfile = hs.CreateNode("node1", 10, 5)
+	var np *hs.NodeProfile = hs.CreateNode("node1", 10)
 
 	metrics := *hs.Get("http://172.17.0.2/os/")
 	stats := metrics.Statistics()

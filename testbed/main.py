@@ -119,12 +119,16 @@ def delete_interference(n_threads=4) -> None:
     return out
 
 def test_interference(n, threads: int, approach="tcc", subdir="4-thread", policy="bestfit"):
-    s = start_scheduler(approach, policy)
-
     for i in range(n):
         print('Testing interference', i, subdir)
+        
         print(delete_interference(threads))
+
+        s = start_scheduler(approach, policy)
+        
         print(create_interference(threads))
+
+        
         print(delete_nginx(approach))
         print(deploy_nginx(approach))
 
@@ -132,13 +136,14 @@ def test_interference(n, threads: int, approach="tcc", subdir="4-thread", policy
 
         save_csv(f'{subdir}/{policy}/{approach}/iteration-{str(i).zfill(2)}.csv', start_hey(ip))
 
-    s.terminate()
+        s.terminate()
 
 n = 30
-subdir = "4-thread"
+threads = 8
+subdir = f"{threads}-thread"
 approaches = ["tcc", "k8s"]
 policies = ["bestfit", "worstfit", "firstfit"]
 
 for a in approaches:
     for p in policies:
-        test_interference(n, 4, approach=a, subdir=subdir, policy=p)
+        test_interference(n, threads, approach=a, subdir=subdir, policy=p)

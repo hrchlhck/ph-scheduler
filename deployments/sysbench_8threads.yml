@@ -18,6 +18,6 @@ spec:
       - name: sysbench
         imagePullPolicy: IfNotPresent
         image: vpemfh7/sysbench:latest
-        command: ["cpu", "--time=0", "--threads=8", "run"]
+        command: ["sysbench", "cpu", "--time=0", "--threads=8", "run"]
         ports:
         - containerPort: 80

@@ -4,16 +4,17 @@ import (
 	"log"
 	"os"
 
-	"github.com/hrchlhck/ph-scheduler/sched"
 	"sync"
+
+	"github.com/hrchlhck/ph-scheduler/sched"
 )
 
-func checkArgs() string {
-	if len(os.Args) < 2 {
-		log.Fatalf("Usage: %s <scheduler name>", os.Args[0])
+func checkArgs() []string {
+	if len(os.Args) < 3 {
+		log.Fatalf("Usage: %s <scheduler name> <policy>", os.Args[0])
 	}
 
-	return os.Args[1]
+	return os.Args[1:]
 }
 
 func main() {
@@ -32,11 +33,12 @@ func main() {
 	// Wait for the scheduler score all nodes after N seconds
 	wg.Add(1)
 
-	sn := checkArgs()
-	s := sched.CreateScheduler(sn, "bestfit", annotations, wg)
+	args := checkArgs()
+	schedName, schedPolicy := args[0], args[1]
+	s := sched.CreateScheduler(schedName, schedPolicy, annotations, wg)
 
 	go sched.MonitorUnscheduledPods(s)
-	
+
 	s.Start()
 
 }

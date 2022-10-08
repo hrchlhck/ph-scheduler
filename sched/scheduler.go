@@ -24,7 +24,7 @@ type Scheduler struct {
 	Name           string
 	SchedulePolicy string
 	NodeScore      map[string]float64
-	wg sync.WaitGroup
+	wg             sync.WaitGroup
 }
 
 type NodeAnnotation struct {
@@ -56,7 +56,7 @@ func CreateScheduler(name, policy string, annotations map[string]string, wg sync
 		NodeScore:      make(map[string]float64),
 		Name:           name,
 		SchedulePolicy: policy,
-		wg: wg,
+		wg:             wg,
 	}
 }
 
@@ -69,7 +69,7 @@ func (s *Scheduler) GetNodes() []v1.Node {
 		taints := node.Spec.Taints
 
 		if len(taints) > 0 {
-			// log.Printf("Ignoring node '%s' because of taints %+v\n", node.Name, taints)
+			log.Printf("Ignoring node '%s' because of taints %+v\n", node.Name, taints)
 			continue
 		}
 		nodeList = append(nodeList, node)
@@ -98,7 +98,7 @@ func (s *Scheduler) GetUnscheduledPods(namespace string) []v1.Pod {
 	}
 
 	for _, pod := range pods.Items {
-		if pod.Spec.SchedulerName == s.Name  && pod.Spec.NodeName == "" {
+		if pod.Spec.SchedulerName == s.Name && pod.Spec.NodeName == "" {
 			podList = append(podList, pod)
 		}
 	}
@@ -174,7 +174,7 @@ func createNodeProfiles(nodes []v1.Node) map[string]p.NodeProfile {
 
 func (s *Scheduler) getBestNode(scores map[string]float64, policy string) v1.Node {
 	nodes := s.GetMapNodes()
-	
+
 	log.Println(scores)
 
 	switch policy {
@@ -228,10 +228,10 @@ func (s *Scheduler) watchUnscheduledPods() <-chan v1.Pod {
 
 func MonitorUnscheduledPods(s *Scheduler) {
 	pods := s.watchUnscheduledPods()
-	
+
 	for {
 		s.wg.Wait()
-			
+
 		bestNode := s.getBestNode(s.NodeScore, s.SchedulePolicy)
 
 		var pod v1.Pod = <-pods
@@ -245,7 +245,7 @@ func MonitorUnscheduledPods(s *Scheduler) {
 }
 
 func (s *Scheduler) Start() {
-	log.Printf("Starting %s scheduler\n", s.Name)
+	log.Printf("Starting '%s' scheduler with policy '%s'\n", s.Name, s.SchedulePolicy)
 
 	nodes := s.GetNodes()
 	nodeProfiles := createNodeProfiles(nodes)
@@ -255,7 +255,7 @@ func (s *Scheduler) Start() {
 		oldScores := s.scoreNodes(&nodeProfiles, &nodes)
 		time.Sleep(5 * time.Second)
 		newScores := s.scoreNodes(&nodeProfiles, &nodes)
-		
+
 		if len(s.NodeScore) > 0 && !doneFlag {
 			s.wg.Done()
 			doneFlag = true
@@ -265,9 +265,9 @@ func (s *Scheduler) Start() {
 		for k := range newScores {
 			newScores[k] = math.Abs(newScores[k] - oldScores[k])
 		}
-		
+
 		s.NodeScore = newScores
-		
+
 		MUTEX.Unlock()
 	}
 }
