@@ -23,9 +23,9 @@ func main() {
 		"ph.max/memory":     "0.75",
 		"ph.max/network":    "0.75",
 		"ph.max/disk":       "0.75",
-		"ph.weight/cpu":     "3",
-		"ph.weight/memory":  "2",
-		"ph.weight/network": "2",
+		"ph.weight/cpu":     "1",
+		"ph.weight/memory":  "3",
+		"ph.weight/network": "1",
 		"ph.weight/disk":    "1",
 	}
 	var wg sync.WaitGroup
