@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sysbench-deployment
+  labels:
+    app: sysbench
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: sysbench
+  template:
+    metadata:
+      labels:
+        app: sysbench
+    spec:
+      containers:
+      - name: sysbench
+        imagePullPolicy: IfNotPresent
+        image: vpemfh7/sysbench:latest
+        command: ["sysbench", "memory", "--memory-blocks-size=4gb", "--time=0", "--memory-access-mode=rnd", "--threads=2", "run"]
+        ports:
+        - containerPort: 80
