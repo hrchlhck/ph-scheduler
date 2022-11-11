@@ -18,6 +18,6 @@ spec:
       - name: sysbench
         imagePullPolicy: IfNotPresent
         image: vpemfh7/sysbench:latest
-        command: ["sysbench", "memory", "--memory-blocks-size=8gb", "--time=0", "--memory-access-mode=rnd", "--threads=2", "run"]
+        command: ["sysbench", "memory", "--memory-block-size=8gb", "--time=0", "--memory-access-mode=rnd", "--threads=2", "run"]
         ports:
         - containerPort: 80

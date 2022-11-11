@@ -6,6 +6,7 @@ import time
 import traceback
 import re
 
+from datetime import datetime as dt
 from pandas import DataFrame
 from collect import Collector
 from pathlib import Path
@@ -209,7 +210,7 @@ def delete_interference(n_threads=4) -> None:
 def create_interference_memory(mem_block_size=4) -> None:
     out = None
     try:
-        out = subprocess.check_output(f"kubectl apply -f ../deployments/sysbench_{mem_block_size}gb.yml".split(" ")).decode()
+        out = subprocess.check_output(f"kubectl apply -f ../deployments/sysbench_{mem_block_size}.yml".split(" ")).decode()
     except:
         pass
     return out
@@ -217,7 +218,7 @@ def create_interference_memory(mem_block_size=4) -> None:
 def delete_interference_memory(mem_block_size=4) -> None:
     out = None
     try:
-        out = subprocess.check_output(f"kubectl delete -f ../deployments/sysbench_{mem_block_size}gb.yml".split(" ")).decode()
+        out = subprocess.check_output(f"kubectl delete -f ../deployments/sysbench_{mem_block_size}.yml".split(" ")).decode()
         wait_deletion()
     except:
         pass
@@ -229,7 +230,7 @@ def test_interference(n, threads: int, device='memory', approach="tcc", subdir="
         
         if subdir != 'no-interference':
             print(f'[ {i} ] No interference')
-            print(delete_interference(threads))
+            print(delete_interference_memory(threads))
 
         s = start_scheduler(approach, policy)
         
@@ -256,8 +257,9 @@ if __name__ == '__main__':
     subdirs = ['no-interference', '4gb', '8gb']
     approaches = ["tcc", "k8s"]
     policies = ["bestfit", "worstfit", "firstfit"]
-
-    for s in subdirs:
+    
+    st = dt.now()
+    for s in subdirs[1:]:
         for a in approaches:
             for p in policies:
                 
@@ -266,3 +268,5 @@ if __name__ == '__main__':
                 else:
                     memory_block_size = int(s[0])
                 test_interference(n, s, device, approach=a, subdir=s, policy=p)
+    et  = dt.now()
+    print(f'Testbed took {et-st}')
